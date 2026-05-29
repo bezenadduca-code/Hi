@@ -43,7 +43,7 @@ local ui = loadstring(game:HttpGet(
 local win = ui:CreateWindow({
     Title          = "SAKIWARE",
     Icon           = "sparkles",
-    Author         = "mitsuki",
+    Author         = "maintained by mitsuki",
     Folder         = "SAKIWARE",
     Size           = UDim2.fromOffset(350, 300),
     Transparent    = false,
@@ -61,7 +61,7 @@ win:SetToggleKey(Enum.KeyCode.L)
 ui:SetFont("rbxasset://fonts/families/AccanthisADFStd.json")
 
 win:EditOpenButton({
-    Title          = "SAKIWARE",
+    Title          = "Open",
     Icon           = "sparkles",
     CornerRadius   = UDim.new(0, 16),
     StrokeThickness = 0,
@@ -126,7 +126,7 @@ local stam = {
     thread  = nil,
 }
 
--- FIX: corrected path - verify this in your explorer under ReplicatedStorage.Systems
+-- FIX: corrected path — verify this in your explorer under ReplicatedStorage.Systems
 local function stamModule()
     local ok, m = pcall(function() return require(svc.RS.Systems.Character.Game.Sprinting) end)
     return ok and m or nil
@@ -180,79 +180,6 @@ lp.CharacterAdded:Connect(function()
     task.delay(1.5, function()
         if stam.on then stamApply(); if not stam.thread then stamStart() end end
     end)
-end)
-
-------------------------------------------------------------------------
--- Status Effects (Slowness / Hallucination / Visual)
-------------------------------------------------------------------------
-local secStatus = tabGlobal:Section({ Title = "Status", Opened = true })
--- FIX: correct paths confirmed as Modules.Schematics.StatusEffects.*
--- Glitched is a LocalScript inside KillerExclusive.Glitched.Frame - handled separately
-local statusGroups = {
-    Slowness      = { on = false, paths = { "Modules.Schematics.StatusEffects.Slowness" } },
-    Hallucination = { on = false, paths = { "Modules.Schematics.StatusEffects.KillerExclusive.Hallucination" } },
-    Visual        = { on = false, paths = {
-        "Modules.Schematics.StatusEffects.Blindness",
-        "Modules.Schematics.StatusEffects.SurvivorExclusive.Subspaced",
-        -- Glitched is a LocalScript inside a Frame, destroyed via parent folder instead
-        "Modules.Schematics.StatusEffects.KillerExclusive.Glitched",
-    }},
-}
-local statusBackup = {}
-local function statusResolve(path)
-    local node = svc.RS
-    for seg in path:gmatch("[^%.]+") do node = node:FindFirstChild(seg); if not node then return nil end end
-    return node
-end
-local function statusBlock(path)
-    if statusBackup[path] then return end
-    local mod = statusResolve(path)
-    if not mod then return end
-    -- Glitched is a Folder containing a Frame containing a LocalScript - destroy the folder
-    if mod:IsA("Folder") then
-        statusBackup[path] = { clone = mod:Clone(), isFolder = true, parentPath = path:match("^(.-)%.?[^%.]+$") }
-        mod:Destroy()
-    elseif mod:IsA("ModuleScript") or mod:IsA("LocalScript") then
-        statusBackup[path] = { clone = mod:Clone(), src = mod.Source, isFolder = false }
-        mod:Destroy()
-    end
-end
-local function statusRestore(path)
-    local saved = statusBackup[path]; if not saved then return end
-    local existing = statusResolve(path); if existing then existing:Destroy() end
-    local parentPath = saved.parentPath or path:match("^(.-)%.?[^%.]+$")
-    local parent = statusResolve(parentPath)
-    if parent then
-        if not saved.isFolder then saved.clone.Source = saved.src end
-        saved.clone.Parent = parent
-    end
-    statusBackup[path] = nil
-end
-local statusLoopThread = nil
-local function statusTick()
-    if statusLoopThread then return end
-    statusLoopThread = task.spawn(function()
-        while true do
-            local any = false
-            for _, g in pairs(statusGroups) do
-                if g.on then any = true; for _, p in ipairs(g.paths) do local m = statusResolve(p); if m then m:Destroy() end end end
-            end
-            if not any then break end; task.wait(0.8)
-        end; statusLoopThread = nil
-    end)
-end
-local function statusToggle(name)
-    local g = statusGroups[name]; if not g then return end; g.on = not g.on
-    for _, p in ipairs(g.paths) do if g.on then statusBlock(p) else statusRestore(p) end end
-    local any = false; for _, sg in pairs(statusGroups) do if sg.on then any = true; break end end
-    if any then statusTick() elseif statusLoopThread then task.cancel(statusLoopThread); statusLoopThread = nil end
-end
-secStatus:Toggle({ Title = "Slowness",       Type = "Checkbox", Flag = "statusSlowness",      Default = false, Callback = function(on) local g = statusGroups["Slowness"];      if g then g.on = on; for _, p in ipairs(g.paths) do if on then statusBlock(p) else statusRestore(p) end end; local any=false; for _,sg in pairs(statusGroups) do if sg.on then any=true; break end end; if any then statusTick() elseif statusLoopThread then task.cancel(statusLoopThread); statusLoopThread=nil end end end })
-secStatus:Toggle({ Title = "Hallucination",  Type = "Checkbox", Flag = "statusHallucination",  Default = false, Callback = function(on) local g = statusGroups["Hallucination"]; if g then g.on = on; for _, p in ipairs(g.paths) do if on then statusBlock(p) else statusRestore(p) end end; local any=false; for _,sg in pairs(statusGroups) do if sg.on then any=true; break end end; if any then statusTick() elseif statusLoopThread then task.cancel(statusLoopThread); statusLoopThread=nil end end end })
-secStatus:Toggle({ Title = "Visual Effects", Type = "Checkbox", Flag = "statusVisual",          Default = false, Callback = function(on) local g = statusGroups["Visual"];        if g then g.on = on; for _, p in ipairs(g.paths) do if on then statusBlock(p) else statusRestore(p) end end; local any=false; for _,sg in pairs(statusGroups) do if sg.on then any=true; break end end; if any then statusTick() elseif statusLoopThread then task.cancel(statusLoopThread); statusLoopThread=nil end end end })
-lp.CharacterAdded:Connect(function()
-    statusBackup = {}; for _, g in pairs(statusGroups) do g.on = false end
-    if statusLoopThread then task.cancel(statusLoopThread); statusLoopThread = nil end
 end)
 
 
@@ -692,7 +619,7 @@ local function flowSolve(puzzle)
         puzzle.paths[ci] = {}
         for _, node in ipairs(ordered) do
             table.insert(puzzle.paths[ci], { row = node.row, col = node.col })
-            -- updateGui rebuilds connections internally via getGrid() - no manual gridConnections needed
+            -- updateGui rebuilds connections internally via getGrid() — no manual gridConnections needed
             puzzle:updateGui()
             task.wait(flow.nodeDelay)
         end
@@ -701,7 +628,7 @@ local function flowSolve(puzzle)
     end
 end
 
--- FIX: FlowGameManager is a Folder - FlowGame is the ModuleScript inside it
+-- FIX: FlowGameManager is a Folder — FlowGame is the ModuleScript inside it
 -- The module returns the u61 class table; hook u61.new to intercept new puzzle instances
 do
     local modFolder  = svc.RS:FindFirstChild("Modules")
@@ -723,10 +650,10 @@ do
                 return p
             end
         else
-            warn("[sakiware] FlowGame: failed to require FlowGame module - auto-solve disabled")
+            warn("[sakiware] FlowGame: failed to require FlowGame module — auto-solve disabled")
         end
     else
-        warn("[sakiware] FlowGame: Modules.Minigames.FlowGameManager.FlowGame not found - auto-solve disabled")
+        warn("[sakiware] FlowGame: Modules.Minigames.FlowGameManager.FlowGame not found — auto-solve disabled")
     end
 end
 
@@ -808,7 +735,7 @@ end)
 task.spawn(function()
     local remote = hbGetRemote()
     if not remote then
-        warn("[sakiware] Aimbot: could not find RemoteEvent - aimbot trigger disabled")
+        warn("[sakiware] Aimbot: could not find RemoteEvent — aimbot trigger disabled")
         return
     end
     remote.OnClientEvent:Connect(function(...)
@@ -960,8 +887,8 @@ lp.CharacterAdded:Connect(function() noliStop(); noliOrigWalkSpeed = nil end)
 
 -- Killer Ability UI
 local secKillerAbilities = tabKiller:Section({ Title = "Killer Abilities", Opened = true })
-secKillerAbilities:Toggle({ Title="c00lkidd - Dash Turn",     Type="Checkbox", Flag="coolkidWSOOn",  Default=coolkidWSOOn,  Callback=function(on) coolkidWSOOn=on;    end })
-secKillerAbilities:Toggle({ Title="Noli - Void Rush Control", Type="Checkbox", Flag="noliVoidRushOn",Default=noliVoidRushOn,Callback=function(on) noliVoidRushOn=on; if not on then noliStop() end end })
+secKillerAbilities:Toggle({ Title="c00lkidd — Dash Turn",     Type="Checkbox", Flag="coolkidWSOOn",  Default=coolkidWSOOn,  Callback=function(on) coolkidWSOOn=on;    end })
+secKillerAbilities:Toggle({ Title="Noli — Void Rush Control", Type="Checkbox", Flag="noliVoidRushOn",Default=noliVoidRushOn,Callback=function(on) noliVoidRushOn=on; if not on then noliStop() end end })
 
 ------------------------------------------------------------------------
 ------------------------------------------------------------------------
@@ -1125,102 +1052,6 @@ secESP:Toggle({ Title="Generators", Type="Checkbox", Flag="espGenerators", Defau
 secESP:Toggle({ Title="Items",      Type="Checkbox", Flag="espItems",      Default=esp.items,      Callback=function(on) esp.items=on;      task.spawn(function() espDoItems(on)      end) end })
 secESP:Toggle({ Title="Buildings",  Type="Checkbox", Flag="espBuildings",  Default=esp.buildings,  Callback=function(on) esp.buildings=on;  task.spawn(function() espDoBuildings(on)  end) end })
 
--- Jane Doe Document ESP
-local jdDocFound = false
-local jdDocHighlight = nil
-local jdDocPulseThread = nil
-
-local function jdDocMakeESP(obj)
-    if jdDocFound then return end
-    if not obj:IsA("MeshPart") then return end
-    local prompt = obj:FindFirstChildOfClass("ProximityPrompt")
-    if not prompt then return end
-    local txt = ((prompt.ActionText or "") .. " " .. (prompt.ObjectText or "")):lower()
-    if not (txt:find("collect") or txt:find("document") or txt:find("folder")) then return end
-    jdDocFound = true
-    local h = Instance.new("Highlight")
-    h.Name = "JDDocESP"
-    h.FillColor = Color3.fromRGB(255, 105, 180)
-    h.OutlineColor = Color3.fromRGB(255, 182, 213)
-    h.FillTransparency = 0.3
-    h.OutlineTransparency = 0
-    h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-    h.Parent = obj
-    jdDocHighlight = h
-    local bill = Instance.new("BillboardGui")
-    bill.Name = "JDDocBillboard"
-    bill.Size = UDim2.new(0, 160, 0, 50)
-    bill.StudsOffset = Vector3.new(0, 3, 0)
-    bill.AlwaysOnTop = true
-    bill.Parent = obj
-    local label = Instance.new("TextLabel")
-    label.BackgroundTransparency = 1
-    label.Size = UDim2.new(1, 0, 1, 0)
-    label.Text = "Document"
-    label.TextScaled = true
-    label.Font = Enum.Font.GothamBold
-    label.TextColor3 = Color3.fromRGB(255, 105, 180)
-    label.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
-    label.TextStrokeTransparency = 0.2
-    label.Parent = bill
-    local att = Instance.new("Attachment")
-    att.Position = Vector3.new(0, 0.5, 0)
-    att.Parent = obj
-    local sparkles = Instance.new("ParticleEmitter")
-    sparkles.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0,   Color3.fromRGB(255, 105, 180)),
-        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 182, 213)),
-        ColorSequenceKeypoint.new(1,   Color3.fromRGB(255, 255, 255)),
-    }
-    sparkles.LightEmission = 1; sparkles.LightInfluence = 0
-    sparkles.Size = NumberSequence.new{ NumberSequenceKeypoint.new(0,0.3), NumberSequenceKeypoint.new(0.5,0.15), NumberSequenceKeypoint.new(1,0) }
-    sparkles.Transparency = NumberSequence.new{ NumberSequenceKeypoint.new(0,0), NumberSequenceKeypoint.new(0.8,0.5), NumberSequenceKeypoint.new(1,1) }
-    sparkles.Rotation = NumberRange.new(0,360); sparkles.RotSpeed = NumberRange.new(-90,90)
-    sparkles.Speed = NumberRange.new(1,3); sparkles.Rate = 20; sparkles.Lifetime = NumberRange.new(0.8,1.5)
-    sparkles.SpreadAngle = Vector2.new(360,360); sparkles.Parent = att
-    jdDocPulseThread = task.spawn(function()
-        while h and h.Parent do
-            svc.TweenService:Create(h, TweenInfo.new(0.7, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {FillTransparency=0.6}):Play()
-            task.wait(0.7)
-            svc.TweenService:Create(h, TweenInfo.new(0.7, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {FillTransparency=0.15}):Play()
-            task.wait(0.7)
-        end
-    end)
-    obj.AncestryChanged:Connect(function()
-        if not obj.Parent then jdDocFound = false end
-    end)
-end
-
-local jdDocEnabled = false
-local jdDocScanConn = nil
-
-local function jdDocStart()
-    for _, v in ipairs(svc.WS:GetDescendants()) do
-        if not jdDocFound then jdDocMakeESP(v) end
-    end
-    jdDocScanConn = svc.WS.DescendantAdded:Connect(function(v)
-        if not jdDocEnabled or jdDocFound then return end
-        task.wait(0.1); jdDocMakeESP(v)
-    end)
-end
-
-local function jdDocStop()
-    if jdDocScanConn then jdDocScanConn:Disconnect(); jdDocScanConn = nil end
-    if jdDocPulseThread then task.cancel(jdDocPulseThread); jdDocPulseThread = nil end
-    if jdDocHighlight and jdDocHighlight.Parent then
-        local bill = jdDocHighlight.Parent:FindFirstChild("JDDocBillboard")
-        if bill then bill:Destroy() end
-        jdDocHighlight:Destroy()
-        jdDocHighlight = nil
-    end
-    jdDocFound = false
-end
-
-secESP:Toggle({ Title="Jane Doe Document", Type="Checkbox", Flag="espJDDoc", Default=false, Callback=function(on)
-    jdDocEnabled = on
-    if on then jdDocStart() else jdDocStop() end
-end })
-
 ------------------------------------------------------------------------
 -- Minion + Puddle ESP
 ------------------------------------------------------------------------
@@ -1359,11 +1190,99 @@ lp.CharacterAdded:Connect(function()
     if mset.puddle then scanPuddles() end
 end)
 
-secMinion:Toggle({ Title="c00lkidd Pizza Bots",   Desc="PizzaDeliveryRig - orange highlight", Type="Checkbox", Flag="espPizza",      Default=mset.pizza,  Callback=function(on) mset.pizza=on;  if on then scanPizza()   else clearTag("pizza")  end end })
-secMinion:Toggle({ Title="1x1x1x1 Zombies",       Desc="1x1x1x1Zombie - green highlight",     Type="Checkbox", Flag="espZombie",     Default=mset.zombie, Callback=function(on) mset.zombie=on; if on then scanZombie()  else clearTag("zombie") end end })
+secMinion:Toggle({ Title="c00lkidd Pizza Bots",   Desc="PizzaDeliveryRig — orange highlight", Type="Checkbox", Flag="espPizza",      Default=mset.pizza,  Callback=function(on) mset.pizza=on;  if on then scanPizza()   else clearTag("pizza")  end end })
+secMinion:Toggle({ Title="1x1x1x1 Zombies",       Desc="1x1x1x1Zombie — green highlight",     Type="Checkbox", Flag="espZombie",     Default=mset.zombie, Callback=function(on) mset.zombie=on; if on then scanZombie()  else clearTag("zombie") end end })
 secMinion:Toggle({ Title="JD Digital Footprints", Desc="Black disc + red glow",               Type="Checkbox", Flag="espPuddle",     Default=mset.puddle, Callback=function(on) mset.puddle=on; if on then scanPuddles() else clearTag("puddle") end end })
 secMinion:Slider({ Title="Highlight Transparency", Flag="espMinionTrans", Step=0.05, Value={Min=0,Max=1,Default=mset.transparency}, Callback=function(v) mset.transparency=v; updateTransparency() end })
 secMinion:Button({ Title="🔄 Force Rescan", Callback=function() clearTag("pizza"); clearTag("zombie"); clearTag("puddle"); task.wait(0.1); scanPizza(); scanZombie(); scanPuddles() end })
+
+------------------------------------------------------------------------
+-- Document / Ring ESP
+------------------------------------------------------------------------
+pcall(function()
+    local docESPEnabled = false
+    local docCurrentESP = nil
+    local docCurrentBillboard = nil
+
+    local function docRemoveESP()
+        pcall(function()
+            if docCurrentESP and docCurrentESP.Parent then docCurrentESP:Destroy() end
+            if docCurrentBillboard and docCurrentBillboard.Parent then docCurrentBillboard:Destroy() end
+        end)
+        docCurrentESP = nil
+        docCurrentBillboard = nil
+    end
+
+    local function docMakeESP(obj)
+        pcall(function()
+            if docCurrentESP then return end
+            if not docESPEnabled then return end
+            if not obj:IsA("MeshPart") then return end
+            local prompt = obj:FindFirstChildOfClass("ProximityPrompt")
+            if not prompt then return end
+            local txt = ((prompt.ActionText or "") .. " " .. (prompt.ObjectText or "")):lower()
+            local itemType = nil
+            if txt:find("collect") or txt:find("document") or txt:find("folder") then itemType = "DOCUMENT" end
+            if txt:find("ring") then itemType = "RING" end
+            if not itemType then return end
+            local h = Instance.new("Highlight")
+            h.Name = "ForsakenESP"
+            h.FillColor = itemType == "RING" and Color3.fromRGB(255,215,0) or Color3.fromRGB(255,255,0)
+            h.OutlineColor = Color3.fromRGB(255,255,255)
+            h.FillTransparency = 0.15
+            h.OutlineTransparency = 0
+            h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+            h.Parent = obj
+            local bill = Instance.new("BillboardGui")
+            bill.Name = "ESPBillboard"
+            bill.Size = UDim2.new(0,80,0,20)
+            bill.StudsOffset = Vector3.new(0,2,0)
+            bill.AlwaysOnTop = true
+            bill.MaxDistance = 9999
+            bill.Parent = obj
+            local label = Instance.new("TextLabel")
+            label.BackgroundTransparency = 1
+            label.Size = UDim2.new(1,0,1,0)
+            label.Text = itemType
+            label.TextScaled = false
+            label.TextSize = 14
+            label.Font = Enum.Font.GothamBold
+            label.TextColor3 = itemType == "RING" and Color3.fromRGB(255,215,0) or Color3.fromRGB(255,255,0)
+            label.TextStrokeTransparency = 0
+            label.TextStrokeColor3 = Color3.new(0,0,0)
+            label.Parent = bill
+            docCurrentESP = h
+            docCurrentBillboard = bill
+        end)
+    end
+
+    local function docScan(v)
+        if v:IsA("MeshPart") then docMakeESP(v) end
+    end
+
+    local secDocESP = tabVisual:Section({ Title = "Document / Ring ESP", Opened = true })
+    secDocESP:Toggle({
+        Title = "Document / Ring ESP",
+        Type = "Checkbox",
+        Flag = "docESPOn",
+        Default = false,
+        Callback = function(state)
+            docESPEnabled = state
+            if not state then docRemoveESP(); return end
+            docRemoveESP()
+            for _, v in ipairs(svc.WS:GetDescendants()) do
+                if docCurrentESP then break end
+                docScan(v)
+            end
+        end
+    })
+
+    svc.WS.DescendantAdded:Connect(function(v)
+        if not docESPEnabled then return end
+        task.wait(0.1)
+        if docESPEnabled and not docCurrentESP then docScan(v) end
+    end)
+end)
 
 ------------------------------------------------------------------------
 ------------------------------------------------------------------------
@@ -2573,7 +2492,7 @@ local secAIMain = tabAI:Section({ Title = "Killer AI", Opened = true })
 
 secAIMain:Paragraph({
     Title   = "What this does",
-    Content = "Pathfinds to the nearest survivor using PathfindingService. Killer-only - switch to killer before enabling.",
+    Content = "Pathfinds to the nearest survivor using PathfindingService. Killer-only — switch to killer before enabling.",
 })
 
 local ai_enabled      = false
@@ -2582,7 +2501,7 @@ local ai_thread       = nil
 local PathfindingService = game:GetService("PathfindingService")
 
 -----------------------------------------------------------------------
--- KILLER AI - Config
+-- KILLER AI — Config
 -----------------------------------------------------------------------
 local aiCfg = {
     slashRange    = 15,
@@ -2592,7 +2511,7 @@ local aiCfg = {
 }
 
 -----------------------------------------------------------------------
--- KILLER AI - State
+-- KILLER AI — State
 -----------------------------------------------------------------------
 local aiState = {
     target      = nil,
@@ -2606,7 +2525,7 @@ local aiState = {
 }
 
 -----------------------------------------------------------------------
--- KILLER AI - Helpers
+-- KILLER AI — Helpers
 -----------------------------------------------------------------------
 local function aiGetSurvivorsFolder()
     local p = svc.WS:FindFirstChild("Players")
@@ -2667,7 +2586,7 @@ local function aiFireSlash()
 end
 
 -----------------------------------------------------------------------
--- KILLER AI - Movement Loop (NEVER STOPS)
+-- KILLER AI — Movement Loop (NEVER STOPS)
 -----------------------------------------------------------------------
 local function aiStartMove()
     if aiState.moveConn then aiState.moveConn:Disconnect() end
@@ -2711,7 +2630,7 @@ local function aiStartMove()
 end
 
 -----------------------------------------------------------------------
--- KILLER AI - Main Loop (NEVER DIES)
+-- KILLER AI — Main Loop (NEVER DIES)
 -----------------------------------------------------------------------
 local function aiKillerLoop()
     aiStartMove()
@@ -2734,7 +2653,7 @@ local function aiKillerLoop()
         elseif now - aiState.stuckCheck.time >= 1.5 then
             local moved = (hrp.Position - aiState.stuckCheck.pos).Magnitude
             if moved < 2 and (targetHRP.Position - hrp.Position).Magnitude > 8 then
-                -- Stuck - clear waypoints to force a fresh path next tick
+                -- Stuck — clear waypoints to force a fresh path next tick
                 aiState.waypoints = {}
                 aiState.wpIndex   = 1
                 aiState.lastPath  = 0  -- force immediate repath
@@ -2837,7 +2756,7 @@ secAICtrl:Button({
 ------------------------------------------------------------------------
 local tabGuest1337 = win:Tab({ Title = "Guest 1337", Icon = "shield" })
 
--- GUEST1337 - Auto Block & Combat
+-- GUEST1337 — Auto Block & Combat
 ------------------------------------------------------------------------
 local sec_015 = tabGuest1337:Section({ Title = "Auto Block & Combat", Opened = true })
 
@@ -2894,6 +2813,7 @@ local TRIGGER_SOUNDS = {
 local BLOCK_ANIMS = {
     ["72722244508749"]=true,["96959123077498"]=true,["95802026624883"]=true,
     ["100926346851492"]=true,["120748030255574"]=true,
+    ["127040663332045"]=true,
 }
 
 local BAIT_KILLERS = {"John Doe","Slasher","c00lkidd","Jason","1x1x1x1","Noli","Sixer","Nosferatu"}
@@ -2980,6 +2900,7 @@ local combatTrackedPunchAnimations = {
     ["81905101227053"]=true, ["127777649118195"]=true,["99100240941590"]=true, ["92831180929659"]=true,
     ["112081768119093"]=true,["117587689359268"]=true,["91830732867282"]=true, ["91730605416216"]=true,
     ["100184164753080"]=true,
+    ["72007882634344"]=true, ["131082534135875"]=true,["108018357044094"]=true,
 }
 
 -- Aim Punch state
@@ -3079,7 +3000,7 @@ svc.Run.RenderStepped:Connect(function()
     end
 end)
 
--- Auto Block (Audio-based) - event-driven hook system
+-- Auto Block (Audio-based) — event-driven hook system
 local combatSoundHooks        = {}
 local combatSoundBlockedUntil = {}
 local combatLastBlockTime     = 0
