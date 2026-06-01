@@ -80,10 +80,10 @@ local popupDone = false
 ui:Popup({
     Title   = GradientText("hutao [forsaken]", Color3.fromHex("#E8194B"), Colors.Gold),
     Icon    = "sparkles",
-    Content = GradientText("maintained by mitsuki", Colors.Gold, Colors.LightBlue),
+    Content = GradientText("V1.0.9", Colors.Gold, Colors.LightBlue),
     Buttons = {
-        { Title = "Exit",     Callback = function() end,                Variant = "Tertiary" },
-        { Title = GradientText("Continue", Color3.fromHex("#E8194B"), Colors.Gold), Callback = function() popupDone = true end, Variant = "Primary" },
+        { Title = "Okay",     Callback = function() end,                Variant = "Tertiary" },
+        { Title = GradientText("beeet", Color3.fromHex("#E8194B"), Colors.Gold), Callback = function() popupDone = true end, Variant = "Primary" },
     },
 })
 repeat task.wait() until popupDone
