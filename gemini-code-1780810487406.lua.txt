@@ -1,0 +1,642 @@
+local WindUI = loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"
+))() [cite: 1]
+
+local Players = game:GetService("Players") [cite: 1]
+local ReplicatedStorage = game:GetService("ReplicatedStorage") [cite: 1]
+local TweenService = game:GetService("TweenService") [cite: 1]
+local RunService = game:GetService("RunService") [cite: 1]
+local LocalPlayer = Players.LocalPlayer [cite: 1]
+
+-- ──────────────────────────────────────────────
+--  CONFIG
+-- ──────────────────────────────────────────────
+local CONFIG = {
+    BehindOffset           = 5.5, [cite: 2]
+    AlreadyBehindTolerance = 3.5, [cite: 2]
+    FireDelay              = 0.37, [cite: 2]
+    DashSpeed              = 79, [cite: 2]
+    ArcSegments            = 5, [cite: 2]
+    SideWidth              = 0.65, [cite: 2]
+    TrailLifetime          = 0.35, [cite: 2]
+
+    DashAnimLeft           = "rbxassetid://117223862448096", [cite: 2]
+    DashAnimRight          = "rbxassetid://75203303352791", [cite: 2]
+    AttackAnimId           = "rbxassetid://100962226150441", [cite: 2]
+
+    FacingDotThreshold     = -0.6, [cite: 2]
+   
+    RetryDelay             = 0.04, [cite: 3]
+    RetryFire              = true, [cite: 3]
+
+    RetryDistance          = 7, [cite: 3]
+    MaxTargetVelocity      = 28, [cite: 3]
+    PostDashDelay          = 0.06, [cite: 3]
+
+    ESPEnabled             = true, [cite: 3]
+    ESPColor               = Color3.fromRGB(255, 50, 50), [cite: 4]
+    ESPFillTransparency    = 0.7, [cite: 4]
+    ESPOutlineTransparency = 0.3, [cite: 4]
+    
+    -- New 360 Spin Config Parameters
+    LoopRadius             = 4.5,
+    SpinSpeedMultiplier    = 1.4
+}
+
+if _G.retryfire ~= nil then
+    CONFIG.RetryFire = _G.retryfire [cite: 4]
+end
+
+-- ──────────────────────────────────────────────
+--  REMOTES
+-- ──────────────────────────────────────────────
+local function getRemote(...)
+    local path = { ... } [cite: 4]
+    local ok, remote = pcall(function()
+        local node = ReplicatedStorage [cite: 4]
+        for _, child in ipairs(path) do [cite: 4]
+            node = node:WaitForChild(child, 5) [cite: 5]
+        end
+        return node [cite: 5]
+    end)
+    return ok and remote or nil [cite: 5]
+end
+
+local targetRemote = getRemote("Knit", "Knit", "Services", "DivergentFistService", "RE", "Activated") [cite: 5]
+if not targetRemote then
+    warn("[DivergentFist] Remote not found!") [cite: 5]
+    return
+end
+
+local returnSkillRemote = getRemote("Knit", "Knit", "Services", "ItadoriService", "RE", "RightActivated") [cite: 5]
+if not returnSkillRemote then
+    warn("[DivergentFist] ReturnSkill remote not found") [cite: 5]
+end
+
+-- ──────────────────────────────────────────────
+--  ESP SYSTEM
+-- ──────────────────────────────────────────────
+local espObjects = {} [cite: 5]
+
+local function createHighlight(model, color)
+    local highlight = Instance.new("Highlight") [cite: 5]
+    highlight.Name = "DivergentFistESP" [cite: 5]
+    highlight.FillTransparency = CONFIG.ESPFillTransparency [cite: 6]
+    highlight.OutlineTransparency = CONFIG.ESPOutlineTransparency [cite: 6]
+    highlight.FillColor = color [cite: 6]
+    highlight.OutlineColor = Color3.fromRGB(255, 255, 255) [cite: 6]
+    highlight.Adornee = model [cite: 6]
+    highlight.Parent = model [cite: 6]
+    return highlight [cite: 6]
+end
+
+local function destroyESP()
+    for _, obj in pairs(espObjects) do [cite: 6]
+        pcall(function() obj:Destroy() end) [cite: 6]
+    end
+    espObjects = {} [cite: 6]
+end
+
+local function updateESP()
+    if not CONFIG.ESPEnabled then [cite: 6]
+        destroyESP() [cite: 6]
+        return [cite: 6]
+    end [cite: 7]
+
+    destroyESP() [cite: 7]
+
+    for _, player in ipairs(Players:GetPlayers()) do [cite: 7]
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then [cite: 7]
+            local humanoid = player.Character:FindFirstChildOfClass("Humanoid") [cite: 7]
+            if humanoid and humanoid.Health > 0 then [cite: 7]
+                local hl = createHighlight(player.Character, CONFIG.ESPColor) [cite: 7]
+                if hl then table.insert(espObjects, hl) end [cite: 8]
+            end
+        end
+    end
+
+    for _, obj in ipairs(workspace:GetDescendants()) do [cite: 8]
+        if obj:IsA("Model") and obj ~= LocalPlayer.Character and obj:FindFirstChild("HumanoidRootPart") then [cite: 8]
+            local humanoid = obj:FindFirstChildOfClass("Humanoid") [cite: 8]
+            if humanoid and humanoid.Health > 0 and not obj:IsDescendantOf(Players) then [cite: 8]
+                local hl = createHighlight(obj, CONFIG.ESPColor) [cite: 9]
+                if hl then table.insert(espObjects, hl) end [cite: 9]
+            end
+        end
+    end
+end
+
+local function applyTransparencyLive()
+    for _, obj in pairs(espObjects) do [cite: 9]
+        pcall(function()
+            obj.FillTransparency = CONFIG.ESPFillTransparency [cite: 9]
+            obj.OutlineTransparency = CONFIG.ESPOutlineTransparency [cite: 10]
+        end)
+    end
+end
+
+task.spawn(function()
+    while true do
+        if CONFIG.ESPEnabled then [cite: 10]
+            updateESP() [cite: 10]
+        end
+        task.wait(0.5) [cite: 10]
+    end
+end)
+
+-- ──────────────────────────────────────────────
+--  UTILS
+-- ──────────────────────────────────────────────
+local function getHRP()
+    local char = LocalPlayer.Character [cite: 10]
+    return char and char:FindFirstChild("HumanoidRootPart") [cite: 10]
+end
+
+local function getAnimator()
+    local char = LocalPlayer.Character [cite: 10]
+    if not char then return nil end [cite: 11]
+
+    local humanoid = char:FindFirstChildOfClass("Humanoid") [cite: 11]
+    if not humanoid then return nil end [cite: 11]
+
+    return humanoid:FindFirstChildOfClass("Animator") [cite: 11]
+end
+
+local function isAliveModel(model)
+    local myChar = LocalPlayer.Character [cite: 11]
+    if model == myChar then return false end [cite: 11]
+
+    local root = model:FindFirstChild("HumanoidRootPart") [cite: 11]
+    local humanoid = model:FindFirstChild("Humanoid") [cite: 11]
+
+    return root and humanoid and humanoid.Health > 0 [cite: 11]
+end
+
+-- ──────────────────────────────────────────────
+--  TARGET CHECKS
+-- ──────────────────────────────────────────────
+local function isTargetFacingAway(targetRoot)
+    local hrp = getHRP() [cite: 11]
+
+    if not hrp or not targetRoot or not targetRoot.Parent then [cite: 11]
+        return false [cite: 12]
+    end
+
+    local toPlayer = (hrp.Position - targetRoot.Position) [cite: 12]
+
+    if toPlayer.Magnitude < 0.01 then [cite: 12]
+        return false [cite: 12]
+    end
+
+    local dot = targetRoot.CFrame.LookVector:Dot(toPlayer.Unit) [cite: 12]
+
+    return dot < CONFIG.FacingDotThreshold [cite: 12]
+end
+
+local function canRetry(targetRoot)
+    local hrp = getHRP() [cite: 12]
+
+    if not hrp or not targetRoot or not targetRoot.Parent then [cite: 12]
+        return false [cite: 12]
+    end
+
+    local dist = (hrp.Position - targetRoot.Position).Magnitude [cite: 12]
+
+    if dist > CONFIG.RetryDistance then [cite: 13]
+        return false [cite: 13]
+    end
+
+    local behindDot = targetRoot.CFrame.LookVector:Dot( [cite: 13]
+        (hrp.Position - targetRoot.Position).Unit [cite: 13]
+    )
+
+    local behindEnough = behindDot < -0.45 [cite: 13]
+
+    local targetVelocity = targetRoot.AssemblyLinearVelocity.Magnitude [cite: 13]
+
+    if targetVelocity > CONFIG.MaxTargetVelocity then [cite: 13]
+        return false [cite: 13]
+    end
+
+    return behindEnough [cite: 13]
+end
+
+-- ──────────────────────────────────────────────
+--  TARGET FINDER
+-- ──────────────────────────────────────────────
+local function findNearestTarget()
+    local hrp = getHRP() [cite: 13]
+
+    if not hrp then [cite: 13]
+        return nil [cite: 14]
+    end
+
+    local nearest = nil [cite: 14]
+    local bestDist = math.huge [cite: 14]
+
+    local function checkModel(model)
+        if not isAliveModel(model) then [cite: 14]
+            return
+        end
+
+        local root = model:FindFirstChild("HumanoidRootPart") [cite: 14]
+        local dist = (hrp.Position - root.Position).Magnitude [cite: 14]
+
+        if dist < bestDist then [cite: 14]
+            bestDist = dist [cite: 15]
+            nearest = model [cite: 15]
+        end
+    end
+
+    for _, player in ipairs(Players:GetPlayers()) do [cite: 15]
+        if player ~= LocalPlayer and player.Character then [cite: 15]
+            checkModel(player.Character) [cite: 15]
+        end
+    end
+
+    for _, obj in ipairs(workspace:GetDescendants()) do [cite: 15]
+        if obj:IsA("Model") then [cite: 16]
+            checkModel(obj) [cite: 16]
+        end
+    end
+
+    return nearest [cite: 16]
+end
+
+-- ──────────────────────────────────────────────
+--  TRAIL
+-- ──────────────────────────────────────────────
+local function createTrail(rootPart)
+    local a0 = Instance.new("Attachment", rootPart) [cite: 16]
+    local a1 = Instance.new("Attachment", rootPart) [cite: 16]
+
+    a1.Position = Vector3.new(0, 2, 0) [cite: 16]
+
+    local trail = Instance.new("Trail", rootPart) [cite: 16]
+    trail.Attachment0 = a0 [cite: 16]
+    trail.Attachment1 = a1 [cite: 16]
+    trail.Color = ColorSequence.new(Color3.fromRGB(255,255,255)) [cite: 16]
+
+    trail.Transparency = NumberSequence.new({ [cite: 16]
+        NumberSequenceKeypoint.new(0, 0.4), [cite: 17]
+        NumberSequenceKeypoint.new(1, 1), [cite: 17]
+    })
+
+    trail.Lifetime = CONFIG.TrailLifetime [cite: 17]
+    trail.MinLength = 0 [cite: 17]
+    trail.FaceCamera = true [cite: 17]
+
+    task.delay(CONFIG.TrailLifetime + 0.1, function()
+        trail:Destroy() [cite: 17]
+        a0:Destroy() [cite: 17]
+        a1:Destroy() [cite: 17]
+    end)
+end
+
+-- ──────────────────────────────────────────────
+--  ANIMATIONS
+-- ──────────────────────────────────────────────
+local cachedAnims = {} [cite: 17]
+
+local function playDashAnimation(direction, duration)
+    local animator = getAnimator() [cite: 17]
+    if not animator then return nil end [cite: 17]
+
+    local animId = (direction == "Left") [cite: 18]
+        and CONFIG.DashAnimLeft [cite: 18]
+        or CONFIG.DashAnimRight [cite: 18]
+
+    if not cachedAnims[direction] then [cite: 18]
+        local anim = Instance.new("Animation") [cite: 18]
+        anim.AnimationId = animId [cite: 18]
+        anim.Name = "DivergentDash_" .. direction [cite: 18]
+        cachedAnims[direction] = anim [cite: 18]
+    end
+
+    local track = animator:LoadAnimation(cachedAnims[direction]) [cite: 18]
+
+    track.Priority = Enum.AnimationPriority.Action [cite: 18]
+    track:Play() [cite: 18]
+
+    task.delay(duration + 0.05, function() [cite: 19]
+        if track and track.IsPlaying then [cite: 19]
+            track:Stop(0.15) [cite: 19]
+        end
+    end)
+
+    return track [cite: 19]
+end
+
+local function playAttackAnimation()
+    local animator = getAnimator() [cite: 19]
+    if not animator then return end [cite: 19]
+
+    if not cachedAnims.Attack then [cite: 19]
+        local anim = Instance.new("Animation") [cite: 19]
+        anim.AnimationId = CONFIG.AttackAnimId [cite: 20]
+        cachedAnims.Attack = anim [cite: 20]
+    end
+
+    local track = animator:LoadAnimation(cachedAnims.Attack) [cite: 20]
+
+    track.Priority = Enum.AnimationPriority.Action [cite: 20]
+    track:Play() [cite: 20]
+
+    task.delay(1.113, function() [cite: 20]
+        if track.IsPlaying then [cite: 20]
+            track:Stop() [cite: 20]
+        end
+    end)
+end
+
+-- ──────────────────────────────────────────────
+--  MOVE CONTROLLER (360 ORBIT MOVEMENT)
+-- ──────────────────────────────────────────────
+local function performCurvedDash(targetRoot)
+    local hrp = getHRP()
+    if not hrp or not targetRoot or not targetRoot.Parent then return end
+
+    local myPos = hrp.Position [cite: 21]
+    -- Absolute back position definition relative to target direction
+    local finalBackPos = (targetRoot.CFrame * CFrame.new(0, 0, CONFIG.BehindOffset)).Position
+
+    -- Skip if already lingering right at their back boundaries
+    if (myPos - finalBackPos).Magnitude < CONFIG.AlreadyBehindTolerance then [cite: 21]
+        playAttackAnimation() [cite: 21]
+        return
+    end
+
+    -- Pick spin entry direction randomly
+    local isLeft = math.random(1, 2) == 2 [cite: 22]
+    local dashDirection = isLeft and "Left" or "Right" [cite: 22]
+    local spinSign = isLeft and 1 or -1
+
+    -- Calculate adaptive duration based on velocity configs
+    local baselineDist = (finalBackPos - myPos).Magnitude
+    local totalDuration = math.max((baselineDist / CONFIG.DashSpeed) * CONFIG.SpinSpeedMultiplier, 0.18)
+
+    createTrail(hrp) [cite: 24]
+    local dashTrack = playDashAnimation(dashDirection, totalDuration) [cite: 24]
+
+    local elapsed = 0
+    local connection
+
+    -- Unhook any physics velocity conflicts during runtime
+    local oldVelocity = hrp.AssemblyLinearVelocity
+    hrp.AssemblyLinearVelocity = Vector3.zero
+
+    connection = RunService.Heartbeat:Connect(function(dt)
+        if not targetRoot or not targetRoot.Parent or elapsed >= totalDuration then
+            connection:Disconnect()
+            
+            -- Lock positioning flatly onto their back target when loop runtime completes
+            hrp.CFrame = CFrame.lookAt(finalBackPos, targetRoot.Position)
+            if dashTrack and dashTrack.IsPlaying then [cite: 25]
+                dashTrack:Stop(0.1) [cite: 26]
+            end
+            playAttackAnimation() [cite: 26]
+            return
+        end
+
+        elapsed = elapsed + dt
+        local t = math.clamp(elapsed / totalDuration, 0, 1)
+
+        -- 360 Spin logic interpolation formulas
+        -- Linear transition closer to the enemy
+        local currentTargetPos = targetRoot.Position
+        local entryVector = (myPos - currentTargetPos).Unit
+        local radius = CONFIG.LoopRadius * (1 - t) -- Spiral strictly shrinks inward as it hits terminal point
+
+        -- Calculate full 360 radian orbit mapping progression
+        local angle = (t * math.pi * 2) * spinSign
+        local rotatedDirection = CFrame.Angles(0, angle, 0) * entryVector
+
+        -- Destination coordinate interpolation mapping
+        local orbitPos = currentTargetPos + (rotatedDirection * radius)
+        
+        -- Interpolate base translation towards actual back coordinates simultaneously
+        local targetCFrameBack = targetRoot.CFrame * CFrame.new(0, 0, CONFIG.BehindOffset)
+        local frameTargetPos = orbitPos:Lerp(targetCFrameBack.Position, t)
+
+        -- Keep body tracking visual facing angles right onto target during frame update loops
+        hrp.CFrame = CFrame.lookAt(frameTargetPos, targetRoot.Position)
+    end)
+
+    -- Force synchronous yield mirroring standard behavior workflow
+    task.wait(totalDuration)
+end
+
+-- ──────────────────────────────────────────────
+--  HOOK
+-- ──────────────────────────────────────────────
+local isCooling = false [cite: 26]
+local isRetrying = false [cite: 26]
+
+local oldNamecall [cite: 26]
+
+oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+    if getnamecallmethod() ~= "FireServer" or self ~= targetRemote then [cite: 26]
+        return oldNamecall(self, ...) [cite: 26]
+    end
+
+    if isRetrying then [cite: 26]
+        return oldNamecall(self, ...) [cite: 26]
+    end
+
+    if isCooling then [cite: 26]
+        return oldNamecall(self, ...) [cite: 26]
+    end
+
+    isCooling = true [cite: 26]
+
+    local result = oldNamecall(self, ...) [cite: 27]
+
+    local args = { ... } [cite: 27]
+
+    local target = findNearestTarget() [cite: 27]
+    local targetRoot = target and target:FindFirstChild("HumanoidRootPart") [cite: 27]
+
+    task.delay(CONFIG.FireDelay, function() [cite: 27]
+
+        if targetRoot and targetRoot.Parent and not isTargetFacingAway(targetRoot) then [cite: 27]
+
+            if returnSkillRemote then [cite: 27]
+                pcall(function() [cite: 27]
+                    returnSkillRemote:FireServer() [cite: 28]
+                end)
+            end
+
+            task.spawn(function() [cite: 28]
+                task.wait(CONFIG.RetryDelay) [cite: 28]
+
+                if not targetRoot.Parent or not isAliveModel(targetRoot.Parent) then [cite: 28]
+                    isCooling = false [cite: 29]
+                    return [cite: 29]
+                end
+
+                performCurvedDash(targetRoot) [cite: 29]
+
+                task.wait(CONFIG.PostDashDelay) [cite: 29]
+
+                local shouldRetryFire = ( [cite: 29]
+                    _G.retryfire ~= nil [cite: 30]
+                ) and _G.retryfire or CONFIG.RetryFire [cite: 30]
+
+                if not canRetry(targetRoot) then [cite: 30]
+                    -- Handled internally
+                elseif not shouldRetryFire then [cite: 30]
+                    -- Handled internally [cite: 31]
+                else
+                    isRetrying = true [cite: 31]
+
+                    pcall(function() [cite: 31]
+                        targetRemote:FireServer(table.unpack(args)) [cite: 31]
+                    end) [cite: 32]
+
+                    task.wait(CONFIG.FireDelay) [cite: 32]
+
+                    pcall(function() [cite: 32]
+                        targetRemote:FireServer(table.unpack(args)) [cite: 32]
+                    end)
+
+                    isRetrying = false [cite: 33]
+                end
+
+                task.defer(function() [cite: 33]
+                    isCooling = false [cite: 33]
+                end)
+            end) [cite: 34]
+
+        else [cite: 34]
+
+            pcall(function() [cite: 34]
+                targetRemote:FireServer(table.unpack(args)) [cite: 34]
+            end)
+
+            task.defer(function() [cite: 34]
+                isCooling = false [cite: 34]
+            end)
+        end [cite: 35]
+    end)
+
+    task.spawn(function() [cite: 35]
+        if not targetRoot or not targetRoot.Parent then [cite: 35]
+            return [cite: 35]
+        end
+
+        performCurvedDash(targetRoot) [cite: 35]
+    end)
+
+    return result [cite: 35]
+end)
+
+-- ──────────────────────────────────────────────
+--  WINDUI MAIN GUI
+-- ──────────────────────────────────────────────
+local Window = WindUI:CreateWindow({ [cite: 35]
+    Title = "Eclipse Fury Hub", [cite: 35]
+    Icon  = "zap", [cite: 35]
+    Theme = "Dark", [cite: 35]
+})
+
+-- ── SETTINGS TAB ────────────────────────────────
+local SettingsTab = Window:Tab({ Title = "Settings", Icon = "settings" }) [cite: 36]
+
+SettingsTab:Slider({ [cite: 36]
+    Title = "Dash Speed", [cite: 36]
+    Step  = 1, [cite: 36]
+    Value = { [cite: 36]
+        Min     = 30, [cite: 36]
+        Max     = 150, [cite: 36]
+        Default = CONFIG.DashSpeed, [cite: 36]
+    },
+    Callback = function(value) [cite: 36]
+        CONFIG.DashSpeed = value [cite: 36]
+    end,
+})
+
+SettingsTab:Slider({ [cite: 36]
+    Title = "Behind Offset", [cite: 36]
+    Step  = 0.5, [cite: 37]
+    Value = { [cite: 37]
+        Min     = 3, [cite: 37]
+        Max     = 10, [cite: 37]
+        Default = CONFIG.BehindOffset, [cite: 37]
+    },
+    Callback = function(value) [cite: 37]
+        CONFIG.BehindOffset = value [cite: 37]
+    end,
+})
+
+SettingsTab:Slider({ [cite: 37]
+    Title = "Fire Delay (seconds)", [cite: 38]
+    Step  = 0.01, [cite: 38]
+    Value = { [cite: 38]
+        Min     = 0.10, [cite: 38]
+        Max     = 1.00, [cite: 38]
+        Default = CONFIG.FireDelay, [cite: 38]
+    },
+    Callback = function(value) [cite: 38]
+        CONFIG.FireDelay = value [cite: 38]
+    end,
+})
+
+SettingsTab:Toggle({ [cite: 38]
+    Title    = "Retry Fire", [cite: 38]
+    Value    = CONFIG.RetryFire, [cite: 38]
+    Callback = function(value) [cite: 38]
+        CONFIG.RetryFire = value [cite: 39]
+        _G.retryfire = value [cite: 39]
+    end, [cite: 39]
+})
+
+-- ── ESP TAB ──────────────────────────────────────
+local ESPTab = Window:Tab({ Title = "ESP", Icon = "eye" }) [cite: 39]
+
+ESPTab:Toggle({ [cite: 39]
+    Title    = "Enable ESP", [cite: 39]
+    Value    = CONFIG.ESPEnabled, [cite: 39]
+    Callback = function(value) [cite: 39]
+        CONFIG.ESPEnabled = value [cite: 39]
+        if not value then [cite: 39]
+            destroyESP() [cite: 39]
+        else [cite: 39]
+            updateESP() [cite: 39]
+        end [cite: 40]
+    end,
+})
+
+ESPTab:Slider({ [cite: 40]
+    Title = "Fill Transparency", [cite: 40]
+    Step  = 0.01, [cite: 40]
+    Value = { [cite: 40]
+        Min     = 0.00, [cite: 40]
+        Max     = 1.00, [cite: 40]
+        Default = CONFIG.ESPFillTransparency, [cite: 40]
+    },
+    Callback = function(value) [cite: 40]
+        CONFIG.ESPFillTransparency = value [cite: 40]
+        applyTransparencyLive() [cite: 40]
+    end,
+})
+
+ESPTab:Slider({ [cite: 40]
+    Title = "Outline Transparency", [cite: 41]
+    Step  = 0.01, [cite: 41]
+    Value = { [cite: 41]
+        Min     = 0.00, [cite: 41]
+        Max     = 1.00, [cite: 41]
+        Default = CONFIG.ESPOutlineTransparency, [cite: 41]
+    },
+    Callback = function(value) [cite: 41]
+        CONFIG.ESPOutlineTransparency = value [cite: 41]
+        applyTransparencyLive() [cite: 41]
+    end,
+})
+
+ESPTab:Button({ [cite: 41]
+    Title    = "Refresh ESP", [cite: 41]
+    Callback = function() [cite: 42]
+        updateESP() [cite: 42]
+    end, [cite: 42]
+})
